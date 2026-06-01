@@ -1,12 +1,9 @@
-name: Complete CI/CD Pipeline
+name: Demigod Pipeline
 
 on:
   push:
     branches:
       - main
-
-env:
-  IMAGE_NAME: demigod
 
 jobs:
 
@@ -15,58 +12,26 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-
-      - name: Checkout Source
-        uses: actions/checkout@v4
-
-      - name: Show Repository
-        run: |
-          pwd
-          ls -la
-          find .
+      - uses: actions/checkout@v4
 
       - name: Verify Files
         run: |
+          ls -la
           test -f Dockerfile
           test -f index.html
 
-  security:
+  build:
 
     runs-on: ubuntu-latest
 
     needs: validate
 
     steps:
-
       - uses: actions/checkout@v4
 
-      - name: Scan For Secrets
+      - name: Build Image
         run: |
-          echo "Searching for passwords"
-          grep -R "password" . || true
-
-      - name: Scan For Private Keys
-        run: |
-          grep -R "PRIVATE KEY" . || true
-
-  build:
-
-    runs-on: ubuntu-latest
-
-    needs: security
-
-    steps:
-
-      - uses: actions/checkout@v4
-
-      - name: Build Docker Image
-        run: |
-          docker build \
-          -t demigod:${{ github.sha }} \
-          .
-
-      - name: List Images
-        run: docker images
+          docker build -t demigod:test .
 
   test:
 
@@ -75,68 +40,31 @@ jobs:
     needs: build
 
     steps:
-
       - uses: actions/checkout@v4
 
-      - name: Build Test Image
+      - name: Build Again
         run: |
-          docker build \
-          -t demigod:test \
-          .
+          docker build -t demigod:test .
 
       - name: Start Container
         run: |
           docker run -d \
-          --name test-nginx \
+          --name demo \
           -p 8080:80 \
           demigod:test
 
-      - name: Wait
-        run: sleep 10
-
-      - name: Curl Test
+      - name: Verify Website
         run: |
+          sleep 5
           curl http://localhost:8080
 
-      - name: Container Logs
-        run: docker logs test-nginx
-
-  package:
+  deploy:
 
     runs-on: ubuntu-latest
 
     needs: test
 
     steps:
-
-      - uses: actions/checkout@v4
-
-      - name: Create Artifact
+      - name: Deployment Simulation
         run: |
-          tar -czvf release.tar.gz *
-
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-package
-          path: release.tar.gz
-
-  deploy:
-
-    runs-on: ubuntu-latest
-
-    needs: package
-
-    steps:
-
-      - name: Simulated Deploy
-        run: |
-          echo "Deployment Stage"
-          echo "Image would be deployed here"
-          echo "Environment: Production"
-
-      - name: Deployment Report
-        run: |
-          echo "Build Successful"
-          echo "Tests Passed"
-          echo "Artifact Generated"
+          echo "Deploying Application"
